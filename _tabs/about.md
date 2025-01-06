@@ -1,8 +1,56 @@
 ---
 # the default layout is 'page'
 icon: fas fa-info-circle
-order: 4
+order: 1
 ---
 
-> Add Markdown syntax content to file `_tabs/about.md`{: .filepath } and it will show up on this page.
-{: .prompt-tip }
+## **Purpose**
+
+This website serves as a portfolio to showcase my electronics and software projects. Whether you're an employer, collaborator, or fellow enthusiast, I hope this portfolio offers insight into my skills and the potential I bring to the table.
+
+## **Mission**
+
+I’m an engineer with a passion for creating innovative solutions that bridge the gap between hardware and software. Driven by a love for problem-solving and a commitment to continuous learning, I thrive on tackling complex challenges and delivering impactful results.
+
+## **Career & Education**
+
+I currently work as a Controls Software Engineer at Pratt Miller in New Hudson, Michigan. I completed my bachelor’s degree in Mechanical Engineering at Western Michigan University in 2021.
+
+During my time in college, I spent most of my time in the Formula SAE program, where I gained hands-on experience designing and testing high-performance vehicles. I initially began my career as a Mechanical Design Engineer, designing parts for both defense and commercial vehicles. This experience provided me with a solid foundation in mechanical systems. Today, I specialize in robotics and controls software for ground vehicles.
+
+## **History**
+
+In 2022, I embarked on a journey to learn embedded C and gain a deeper understanding of how microcontrollers function. To reinforce my learning, I began working on small projects that allowed me to apply these new skills. This experience not only broadened my knowledge of embedded systems but also refined my approach to designing more sophisticated and efficient systems.
+
+## **Skillsets**
+
+### 3D Modelling
+- Creo
+- SolidWorks
+- NX
+
+### PCB Design
+- KiCad
+
+### Software Development
+- Git
+- Python
+- C
+- MATLAB/Simulink
+- Motohawk
+- LabVIEW
+
+
+### Modelling & Simulation
+- Ansys
+- CarSim
+
+### Communication Protocols
+- TCP/IP
+- UART, I2C, CAN
+- XCP, J1939, CANOpen
+
+
+### Testing & Analysis Tools
+- CANalyzer
+- CANape
