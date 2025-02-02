@@ -22,35 +22,34 @@ During my time in college, I spent most of my time in the Formula SAE program, w
 
 In 2022, I embarked on a journey to learn embedded C and gain a deeper understanding of how microcontrollers function. To reinforce my learning, I began working on small projects that allowed me to apply these new skills. This experience not only broadened my knowledge of embedded systems but also refined my approach to designing more sophisticated and efficient systems.
 
-## **Skillsets**
+## **Skillset**
+
+### Software Development
+- Git
+- Python
+- C
+- MATLAB/Simulink (Simulation and Embedded)
+- LabVIEW
+
+### Communication Protocols
+- TCP/IP
+- UART, I2C, SPI, CAN
+- XCP, J1939, CANOpen
+
+### PCB Design
+- KiCad
 
 ### 3D Modelling
 - Creo
 - SolidWorks
 - NX
 
-### PCB Design
-- KiCad
-
-### Software Development
-- Git
-- Python
-- C
-- MATLAB/Simulink
-- Motohawk
-- LabVIEW
-
-
-### Modelling & Simulation
-- Ansys
+### Simulation
 - CarSim
+- Ansys
 
-### Communication Protocols
-- TCP/IP
-- UART, I2C, CAN
-- XCP, J1939, CANOpen
-
-
-### Testing & Analysis Tools
+### Development Tools
 - CANalyzer
 - CANape
+- Motohawk
+- Influx/Grafana
