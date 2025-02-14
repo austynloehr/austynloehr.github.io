@@ -207,7 +207,15 @@ I used data from these sensors to estimate the reaction wheel's orientation.
 ### Accelerometer Estimate
 
 Using the accelerometer, I was able to calculate the current angle using the gravity vector. Since the device only rotates around a single axis, the angle can be estimated using only the X and Y acceleration measurements.
-If the device is perfectly balanced and unaffected by external forces, the gravity vector would align with the IMU’s Y-axis, and $$ a_y $$ would read around 9.8 m/s². As the device deviates from this positioTop level data busses:
+If the device is perfectly balanced and unaffected by external forces, the gravity vector would align with the IMU’s Y-axis, and $$ a_y $$ would read around 9.8 m/s². As the device deviates from this position, more of the gravity
+vector will be in the IMU's X-axis, and the magnitude of $$ a_x $$ would increase while $$ a_y $$ decreases. Using basic trigonometry, the device's angle can be estimated using equation \eqref{eq:theta_accel}. 
+
+$$
+\begin{equation}
+  \theta = \tan^{-1}\left(\frac{a_x}{a_y}\right)
+  \label{eq:theta_accel}
+\end{equation}
+$$
 
 ![Screenshot-from-2025-01-23-22-20-51.png](https://i.postimg.cc/28CR3DSs/Screenshot-from-2025-01-23-22-20-51.png)
 _Figure 11. Accelerometer Angle Calculation_
@@ -216,7 +224,6 @@ This estimate is only accurate if there are no external
 net-forces, other than gravity, acting on the system. Any other net-forces will be seen in the accelerometer measurements, and throw off the angle estimate. This estimate is only accurate if there are no external net forces, 
 other than gravity, acting on the system. Any other net forces will be detected by the accelerometer and will throw off the angle estimate. The advantage of this method is that it can always calculate an estimate of the 
 device's orientation without needing information about its previous position.
-
 
 ### Gyro Estimate
 
@@ -229,7 +236,7 @@ $$
   \theta = \int_{t_0}^{t} \omega(t) \, dt
   \label{eq:theta_gyro}
 \end{equation}
-$$omega
+$$
 
 Unfortunately, this continuous system cannot be perfectly modeled on an embedded system. However, it can be approximated using Euler's method for integration, as shown in equation \eqref{eq:theta_gyro_euler}.
 In this method, the current angular velocity is multiplied by the sample time to calculate an angular displacement, which is then added to the previous angle to obtain the current angle.
@@ -302,7 +309,12 @@ $$
 
 $$
 \begin{equation}
-  \ddot{\theta athbf{B} \mathbf{u} $$ represents any control inputs to the system. This term would be used if I wanted to include the commanded motor speeds in the model to further improve my estimate.
+  \ddot{\theta} = \ddot{\theta}
+  \label{eq:newton_accel}
+\end{equation}
+$$ 
+  
+$$\mathbf{B} \mathbf{u}$$ represents any control inputs to the system. This term would be used if I wanted to include the commanded motor speeds in the model to further improve my estimate.
 My goal was to keep the model as simple as possible to achieve acceptable estimate accuracy. I found that I was able to get adequate results without including these inputs. Therefore, equations 
 \eqref{eq:newton_pos} - \eqref{eq:newton_accel} need to be converted to the form shown in equation \eqref{eq:state_space_nocontrol}. The state space model used for this filter is shown in equation \eqref{eq:state_space_model}.
 
@@ -531,8 +543,48 @@ _Figure 21. Real-Time Initialization_
 
 ## Balance Control
 
+Once I was able to calculate a robust orientation estimate, I was able to design the balance controller. The balance controller has two possible states: `JumpUp` and `Balance`.
+
+### Jump Up
+
+The goal of this mode was to force the reaction wheel to jump as close to the center as possible without excessive overshoot. This is achieved by spinning the motor in one 
+direction and then quickly reversing it. The reaction wheel spins up to **4100 RPM** for **60 ms** before rapidly switching the speed command to **-4100 RPM**. The sign of the speed 
+command depends on which side the reaction wheel is currently on. The device will enter this mode when the current angle is greater that $$ 30 ^ \circ $$ and will exit when the angle
+is less than $$ 20 ^ \circ $$. It will continually attempt to jump to center until balanced or user requests `Standby`.
+
+In this state, the motor controller operates in speed control mode. This means that the MCU sends a speed request to the motor controller, which is responsible for generating the 
+current commands to control the motor speed. 
+
+I attempted the same strategy using current control mode but found that the device was significantly less responsive. It appeared that the motor controller applied a current rate 
+limit to the command, causing the torque to slowly ramp down from driving torque to zero torque before applying regen torque. Whereas in speed control mode, the motor could 
+immediately switch from driving torque to regen torque and target the requested speed.
+
+### Balance
+
+Once the device exits the `JumpUp` state, it will enter the `Balance` state. In this state, a PD controller is used to maintain balance and a proportional controller
+is used to limit motor speed. Since the reaction wheel relies on changes in speed to alter orientation, it is considered *saturated* when its max speed is reached.
+
+When using just a PD controller, I found that the device was only able to balance for a brief period of time before reaching max speed and falling on its side.
+As a result, the second controller was added to prevent saturation. Figure 22 below shows the block diagram for this control strategy.
+
+In this state, the motor controller operates in current control mode, which provided smoother motor control at low speeds. As the device approaches $$ 0 ^ \circ $$, 
+the motor torque gradually ramps down to zero. In speed control mode, the motor controller would apply a significant amount of regen torque to target zero speed, 
+this would disrupt the balance of the device.
+
 ![pid-1.png](https://i.postimg.cc/WbcGgF1R/pid-1.png)
-_Balance Controller Flow Diagram_
+_Figure 22. Balance Controller Block Diagram_
+
+### Performace
+
+Figures 23 and 24 below show the reaction wheel's balance performance with the final controller gains. The reaction wheel was able to jump up and balance in under **1.5 seconds**, 
+with approximately $$ 10 ^ \circ $$ of overshoot. It is also able to effectifly reject any disturbances, although there is quite a bit of overshoot in this scenario. While better 
+performance could be achieved with additional tuning time or more advanced control strategies, I am very satisfied with this performance given the simplicity of the control algorithm. 
+
+![Screenshot-from-2025-02-13-21-47-19.png](https://i.postimg.cc/D09sCvDm/Screenshot-from-2025-02-13-21-47-19.png)
+_Figure 23. Jump Up Response_
+
+![Screenshot-from-2025-02-13-21-49-27.png](https://i.postimg.cc/BtfLThLK/Screenshot-from-2025-02-13-21-49-27.png)
+_Figure 24. Disturbance Rejection_
 
 ## Data Logging & Visualization
 
