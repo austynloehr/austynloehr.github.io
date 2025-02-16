@@ -512,7 +512,7 @@ The library made it very easy to implement a Kalman filter and begin tuning. It 
 Figures 18 and 19 below compare the performance of the Kalman filter with that of accelerometer and gyro estimation methods, using the same data as Figures 15-18. In Figure 18, you can 
 see that the filter initially tracks very closely to the gyro estimate. While the gyro estimate begins to drift over time, the filter maintains an accurate estimate. 
 Additionally, note how much smoother the signal is compared to the accelerometer estimate. This demonstrates that the filter can effectively incorporate the accelerometer data without
-introducing a noise from the motor vibrations.
+introducing any noise from the motor vibrations.
 
 ![kf-1.png](https://i.postimg.cc/TwvjGths/kf-1.png)
 _Figure 18. Simulated Kalman Filter Overview_
@@ -529,8 +529,8 @@ Once I was satisfied with the simulated filter performance, the next step was to
 [ARM CMSIS](https://arm-software.github.io/CMSIS_5/DSP/html/group__groupMatrix.html). While I won’t go into the details of the C implementation here, the source code for the filter can be found
 [here](https://github.com/austynloehr/stm32_reaction_wheel/blob/main/ReactionWheel_F412/Core/Src/Application/Control/VirtualSensors/VS_OrientationEstimation.c).
 
-Figures 20 and 21 below show data actual Kalman filter data logged from the MCU. Figure 20 compares the filter with gyro and accelerometer estimates. Performance of the 
-real-time filter aligns well with the simulation results.
+Figures 20 and 21 below show actual Kalman filter data logged from the MCU. Figure 20 compares the filter with the gyro and accelerometer estimates. Performance of the 
+real-time filter seems to align well with the simulation results.
 
 ![Screenshot-from-2025-02-05-21-45-18.png](https://i.postimg.cc/Gh6HZH47/Screenshot-from-2025-02-05-21-45-18.png)
 _Figure 20. Kalman Filter Real-Time Performance_
@@ -562,8 +562,9 @@ immediately switch from driving torque to regen torque and target the requested 
 ### Balance
 
 Once the device exits the `JumpUp` state, it will enter the `Balance` state. In this state, a PD controller is used to maintain balance and a proportional controller
-is used to limit motor speed. Since the reaction wheel relies on changes in speed to alter orientation, it is considered *saturated* when its max speed is reached.
+is used to limit motor speed. 
 
+Since the reaction wheel relies on changes in speed to alter orientation, it is considered *saturated* when its max speed is reached.
 When using just a PD controller, I found that the device was only able to balance for a brief period of time before reaching max speed and falling on its side.
 As a result, the second controller was added to prevent saturation. Figure 22 below shows the block diagram for this control strategy.
 
@@ -588,8 +589,57 @@ _Figure 24. Disturbance Rejection_
 
 ## Data Logging & Visualization
 
-![data-logging.png](https://i.postimg.cc/Dw21p9GB/data-logging.png)
-_Data Logging Architecture_
+The final requirement for this device was the ability to wirelessly log and view data from the MCU. While I can view live data using STM32's debugger, it lacks a user-friendly 
+interface for logging and plotting data. I frequently used the debugger during the initial firmware development, but for tuning, I wanted an intuitive interface for plotting 
+and comparing signals. The wireless data logging architecture is shown below in Figure 25.
 
+![data-logging.png](https://i.postimg.cc/Dw21p9GB/data-logging.png)
+_Figure 25. Data Logging Architecture_
+
+### Wireless Data Transfer
+
+All logged data is sent over Bluetooth using the HC-05 UART Bluetooth module. This device handles all Bluetooth communication and requires data to be sent to it via UART, 
+making integration with the STM32 very straightforward. In the MCU, all logged signals are packed into a struct and sent over UART in the following format:
+
+```c
+typedef struct LogPayload{
+  uint32_t tick_ms;
+  float ax_mps2;
+  float ay_mps2;
+  float wz_dps;
+  float axFilt_mps2;
+  float ayFilt_mps2;
+  float rollAngle_deg;
+  float rollRate_deg;
+  int32_t MotorSpeed_rpm;
+  int32_t MotorCurrent_mA;
+  int32_t MotorRequest_na;
+  int32_t PIDTerm_mA;
+  int32_t MotorSpeedTerm_mA;
+  int32_t pTerm_mA;
+  int32_t iTerm_mA;
+  int32_t dTerm_mA;
+  uint8_t MotorControlMode_enum;
+  uint8_t StateReq_enum;
+  uint8_t CurrentState_enum;
+  uint8_t MotorEnable_bool;
+} __attribute__ ((packed)) LogPayload_t;
+```
+
+Any connected bluetooth device is able to receive and unpack this struct for processing. `Tick` represents the timestamp at which the struct was packed. This log data packet is sent from
+the reaction wheel every 14ms. I was not able to run the data logger at the base execution rate of 500Hz, due to data throughput limits at 460800 baud. If I wanted to log data faster
+I could've sacrificed signal resolution and packed the data into fewer variables, but this was easy and worked fine for my application.
+
+### Logging and Visualization
+
+Since the reaction wheel only broadcasts data, a host computer is required to log it. Once the Bluetooth connection is established, I use
+[Minicom](https://help.ubuntu.com/community/Minicom) to receive the data and log the raw hex values to a file. Using Python, the hex data is read from the log file, unpacked into signals, 
+and stored in an InfluxDB database. I chose InfluxDB because it is designed for time-series data, has an easy-to-use Python API, and integrates seamlessly with Grafana. Once the data is 
+stored in the database, it can be easily viewed in Grafana. Grafana is a visualization platform that allows users to easily create dashboards for analyzing data. This made it easy to
+compare data from different tests while tuning the device, saving a significant amount of time compared to manually plotting and analyzing datasets with Python. The Grafana
+dashboard I created for this project is shown below in Figure 26.
+
+![Screenshot-from-2025-02-13-21-49-27.png](https://i.postimg.cc/hPJ9MjK0/Screenshot-from-2025-02-16-13-58-11.png)
+_Figure 26. Grafana Dashboard_
 
 ## Final Remarks
