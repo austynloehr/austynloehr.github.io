@@ -1,6 +1,6 @@
 ---
 title: Self-Balancing Reaction Wheel
-date: 2025-01-07 12:00:00 -0500
+date: 2025-02-16 12:00:00 -0500
 categories: 
 tags:
 image: https://i.postimg.cc/XJXD9mNz/Reaction-Wheelw-Background.png
@@ -643,3 +643,8 @@ dashboard I created for this project is shown below in Figure 26.
 _Figure 26. Grafana Dashboard_
 
 ## Final Remarks
+
+Overall, this project provided valuable insights into embedded system design. From PCB design to firmware development, each step presented unique challenges that helped me expand 
+my knowledge and skill set.  I improved my PCB design skills and gained a deeper understanding of microcontrollers, embedded software architecture, digital filtering, Kalman filtering, 
+and control theory. While there is always room for improvement—such as refining the control algorithms or improving PCB design—the current implementation serves as a solid 
+foundation for future enhancements. I hope this write-up helps others working on similar projects, and I look forward to applying my new skills to future projects.
