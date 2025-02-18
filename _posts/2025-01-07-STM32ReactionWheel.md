@@ -9,6 +9,8 @@ math: true
 
 ## Demo
 
+{% include embed/youtube.html id="WVB7trJnaq4" %}
+
 ## Overview
 
 I started this project to expand my knowledge of embedded system design. I began learning embedded C in 2022 and wanted a project to practice and apply my skills. 
