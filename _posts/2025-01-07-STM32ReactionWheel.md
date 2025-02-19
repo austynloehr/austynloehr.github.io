@@ -20,7 +20,7 @@ As a mechanical engineer, I have taken courses in control systems, and I saw thi
 While I have previously used Arduino in several college projects, I wanted to gain experience with a more industry-relevant microcontroller. 
 I decided on the STM32 for its large support community and the extensive IDE.
 
-In order to balance, this device relies on the conservation of angular momentum. The weighted flywheel is the key component of the design.
+In order to balance, this device relies on the conservation of angular momentum. The weighted flywheel is the key component of this design.
 As the flywheel's speed changes, it generates a reaction torque that alters the orientation of the device. A brushless motor is coupled to the flywheel to control its speed. 
 Similar reaction wheels are commonly used in spacecraft to control orientation.
 
@@ -107,6 +107,9 @@ The easiest solution was to integrate the HC-05 module. I did most of my initial
 
 If my goal hadn't been to learn how to program in the STM32 ecosystem, I would have replaced both the MCU and Bluetooth module with an ESP32 or a similar SOC that met my interface requirements. 
 If I had gone in this direction, I think I would have used Wi-Fi with an IoT protocol instead of Bluetooth. I believe that would have made it much easier to interface with a computer and view live data. Maybe a project for another day...
+
+The emergency stop circuit routes all battery current through a SPDT switch. It was difficult to find a switch in this form factor that was able to handle the 20A current requirement.
+If I were to revise the board, I would integrate two relays on the PCB and pass all current through them. The SPDT emergency stop switch would then just control the relay coils.
 
 Oh and one last thing, the pinout on the charger connector is backwards from the normal convention. Never quite had the motivation to go back and fix that one.
 
@@ -203,7 +206,7 @@ _Figure 10. Primary State Machine Diagram_
 
 ## Angle Estimation
 
-To design a balance control system, I first needed accurate feedback of the reaction wheel's current angle. The balance controller PCB includes an onboard IMU (MPU-6050) with both an accelerometer and a gyro. 
+To design a balance control system, I first needed accurate feedback of the device's current angle. The balance controller PCB includes an onboard IMU (MPU-6050) with both an accelerometer and a gyro. 
 I used data from these sensors to estimate the reaction wheel's orientation.
 
 ### Accelerometer Estimate
@@ -244,7 +247,6 @@ Unfortunately, this continuous system cannot be perfectly modeled on an embedded
 In this method, the current angular velocity is multiplied by the sample time to calculate an angular displacement, which is then added to the previous angle to obtain the current angle.
 While there are more accurate methods for discrete integration, this approach proved sufficient for my application. The estimation algorithm ran at 500 Hz, which helped minimize integration errors.
 
-
 $$
 \begin{equation}
   \theta_{n} = \theta_{n-1} + \Delta t \cdot \omega_n
@@ -256,7 +258,25 @@ $$
 _Figure 12. Gyro Angle Calculation_
 
 The main advantage of this estimation method is that it is less susceptible to external forces. However, there are some drawbacks: you must know the device's initial position, and the estimate will gradually drift over time. 
-This drift occurs because sensor noise accumulates as it is integrated over time.Top level data busses:
+This drift occurs because sensor noise accumulates as it is integrated over time.
+
+### Comparison 
+
+The following plots show real data that was logged from the reaction wheel's IMU. The motor was spinning at a constant speed of approximately 5500RPM. The reaction wheel was manually flipped from one side (+45 degrees) to the other (-45 degrees).
+At $$ t=16s $$, the reaction wheel motor was turned off to compare sensor noise. Data from the IMU was logged via bluetooth with a sample rate of 500Hz. Equations \eqref{eq:theta_accel} and \eqref{eq:theta_gyro_euler} 
+were implimented in Python on my desktop. All angle estimation calculations and filtering were performed during post-processing.
+
+Figure 13 shows the results of passing raw $$ a_x $$ and $$ a_y $$ values into equation \eqref{eq:theta_accel} to estimate the reaction wheel's orientation. Lines are drawn at $$ y = \pm 45^ \circ $$ for reference, marking the true positions
+of the reaction wheel when flipped on its side. Note the drastic difference in noise when the motor is turned on versus off. This noise is the result of vibrations that are generated from the motor and propogated through the whole system.
+I attempted to mitigate this issue by mounting the balance controller PCB on rubber isolators, but unfortunately, they were unable to provide sufficient damping.
+While trends in the data are visible, the measurements are essentially unusable with the motor running. However, the estimates appear to be accurate when the motor is turned off.
+
+![Screenshot-from-2025-02-01-19-12-53.png](https://i.postimg.cc/mgPBJ7mW/Screenshot-from-2025-02-01-19-12-53.png)
+_Figure 13. Raw Accelerometer Angle Estimate_
+
+Figure 14 shows the same data but $$ a_x $$ and $$ a_y $$ values were each passed through a 1st order digital low-pass filter (butterworth) before being passed into equation \eqref{eq:theta_accel}. Cutoff frequencies of 20Hz, 5Hz, and 1Hz are compared.
+Each of these filtered examples represents a significant improvement over the raw data in Figure 7. Both the 20 Hz and 5 Hz filters still exhibit considerable steady-state noise and large angle spikes when the device falls on its side. 
+Based on this data, the 1 Hz filter appears promising—at least for now.
 
 ![accel-filt-1.png](https://i.postimg.cc/kGShWXcZ/accel-filt-1.png)
 _Figure 14. Accelerometer Filter Comparison_
@@ -268,7 +288,7 @@ it takes much longer to respond to changes in position. This increased response 
 _Figure 15. Filter Response Time Comparison_
 
 Figure 16 shows the results of passing $$ \omega_z $$ into equation \eqref{eq:theta_gyro_euler} with an initial condition of $$ 45^ \circ $$. Note that no additional filtering was performed on this data, and the signal is already much 
-smoother compared to the accelerometer data. While the estimate initially starts off accurately, you can see it begin to drift around $$ t=10 $$ . Unfortunately, this drift is also not acceptable for this application.
+smoother compared to the accelerometer data. While the estimate initially starts off accurate, you can see it begin to drift around $$ t=10 $$ . Unfortunately, this drift is also not acceptable for this application.
 
 ![gyro.png](https://i.postimg.cc/7Z9t3R3x/gyro.png)
 _Figure 16. Gyro Angle Estimate_
@@ -282,7 +302,7 @@ _Figure 17. Accelerometer/Gyro Comparison_
 
 I’d like to preface this section by mentioning that the Kalman filter was not my first choice for the orientation estimation in this project. In fact, I initially tried to avoid designing a Kalman filter. 
 I first explored using only the gyro with some integrator reset conditions, as well as a complementary filter. I initially achieved good results with the complementary filter, until I assembled the first prototype. 
-However, the vibrations induced by the motor rendered both of these strategies unusable. This forced the project to be put on hold for several weeks while I learned about Kalman filter design. 
+The vibrations induced by the motor rendered both of these strategies unusable. This forced the project to be put on hold for several weeks while I learned about Kalman filter design. 
 
 For anyone looking to learn about the topic without wading through formal proofs and intimidating matrix math, [Kalman and Bayesian Filters in Python](https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python) is a fantastic resource. 
 The author does an amazing job of breaking down concepts into layman's terms and providing real examples of how to implement the filters in Python.
@@ -315,8 +335,12 @@ $$
   \label{eq:newton_accel}
 \end{equation}
 $$ 
-  
-$$\mathbf{B} \mathbf{u}$$ represents any control inputs to the system. This term would be used if I wanted to include the commanded motor speeds in the model to further improve my estimate.
+
+
+#### State Matrix
+
+To convert equations \eqref{eq:newton_pos} - \eqref{eq:newton_accel} to state space representation, they need to be expressed in matrix form, following the format shown in equation \eqref{eq:state_space_control}.
+The term $$ \mathbf{B} \mathbf{u} $$ represents any control inputs to the system. This term would be used if I wanted to include the commanded motor speeds in the model to further improve my estimate.
 My goal was to keep the model as simple as possible to achieve acceptable estimate accuracy. I found that I was able to get adequate results without including these inputs. Therefore, equations 
 \eqref{eq:newton_pos} - \eqref{eq:newton_accel} need to be converted to the form shown in equation \eqref{eq:state_space_nocontrol}. The state space model used for this filter is shown in equation \eqref{eq:state_space_model}.
 
@@ -528,7 +552,7 @@ _Figure 19. Simulated Kalman Filter Comparison_
 
 
 Once I was satisfied with the simulated filter performance, the next step was to implement it in C on the MCU. To handle the digital filtering and matrix math, I utilized
-[ARM CMSIS](https://arm-software.github.io/CMSIS_5/DSP/html/group__groupMatrix.html). While I won’t go into the details of the C implementation here, the source code for the filter can be found
+[ARM CMSIS](https://arm-software.github.io/CMSIS_5/DSP/html/group__groupMatrix.html). While I won’t go into the details of the C implementation, but the source code for the filter can be found
 [here](https://github.com/austynloehr/stm32_reaction_wheel/blob/main/ReactionWheel_F412/Core/Src/Application/Control/VirtualSensors/VS_OrientationEstimation.c).
 
 Figures 20 and 21 below show actual Kalman filter data logged from the MCU. Figure 20 compares the filter with the gyro and accelerometer estimates. Performance of the 
@@ -605,26 +629,26 @@ making integration with the STM32 very straightforward. In the MCU, all logged s
 
 ```c
 typedef struct LogPayload{
-  uint32_t tick_ms;
-  float ax_mps2;
-  float ay_mps2;
-  float wz_dps;
-  float axFilt_mps2;
-  float ayFilt_mps2;
-  float rollAngle_deg;
-  float rollRate_deg;
-  int32_t MotorSpeed_rpm;
-  int32_t MotorCurrent_mA;
-  int32_t MotorRequest_na;
-  int32_t PIDTerm_mA;
-  int32_t MotorSpeedTerm_mA;
-  int32_t pTerm_mA;
-  int32_t iTerm_mA;
-  int32_t dTerm_mA;
-  uint8_t MotorControlMode_enum;
-  uint8_t StateReq_enum;
-  uint8_t CurrentState_enum;
-  uint8_t MotorEnable_bool;
+    uint32_t tick_ms;
+    float ax_mps2;
+    float ay_mps2;
+    float wz_dps;
+    float axFilt_mps2;
+    float ayFilt_mps2;
+    float rollAngle_deg;
+    float rollRate_deg;
+    int32_t MotorSpeed_rpm;
+    int32_t MotorCurrent_mA;
+    int32_t MotorRequest_na;
+    int32_t PIDTerm_mA;
+    int32_t MotorSpeedTerm_mA;
+    int32_t pTerm_mA;
+    int32_t iTerm_mA;
+    int32_t dTerm_mA;
+    uint8_t MotorControlMode_enum;
+    uint8_t StateReq_enum;
+    uint8_t CurrentState_enum;
+    uint8_t MotorEnable_bool;
 } __attribute__ ((packed)) LogPayload_t;
 ```
 
