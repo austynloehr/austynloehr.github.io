@@ -3,7 +3,7 @@ title: Self-Balancing Reaction Wheel
 date: 2025-02-16 12:00:00 -0500
 categories: 
 tags:
-image: https://i.postimg.cc/XJXD9mNz/Reaction-Wheelw-Background.png
+image: https://i.postimg.cc/vDwYVbRK/Reaction-Wheelw-Background.png
 math: true
 ---
 
@@ -43,7 +43,7 @@ it would generate more than enough torque for effective balance control. The sim
 ![Render.png](https://i.postimg.cc/X7tF3R0j/Render.png)
 _Figure 1. Balance Controller Rendering_
 
-![Screenshot-from-2025-01-07-23-39-28.png](https://i.postimg.cc/RFX4Zjsp/Screenshot-from-2025-01-07-23-39-28.png)
+![Screenshot-from-2025-01-07-23-39-28.png](https://i.postimg.cc/g2NxfLbk/Screenshot-from-2025-01-07-23-39-28.png)
 _Figure 2. Balance Controller Schematic ([PDF](https://github.com/austynloehr/stm32_reaction_wheel/blob/main/Hardware/Balance_Controller/Schematic_Rev_B.pdf))_
 
 ### Background
